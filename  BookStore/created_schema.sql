@@ -33,3 +33,6 @@ CASCADE,
  price_each NUMERIC(8,2) NOT NULL CHECK (price_each >= 0),
  PRIMARY KEY (order_id, book_id)
 );
+CREATE INDEX idx_orders_customer ON orders(customer_id);
+CREATE INDEX idx_orders_placed ON orders(placed_at);
+CREATE INDEX idx_books_author ON books(author_id);
