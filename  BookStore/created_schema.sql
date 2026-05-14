@@ -1,60 +1,35 @@
 CREATE TABLE authors (
-    id SERIAL PRIMARY KEY,
-    author_name VARCHAR(100) NOT NULL,
-	country VARCHAR(100) NOT NULL,
-	birth_date DATE NOT NULL
+ id BIGSERIAL PRIMARY KEY,
+ name TEXT NOT NULL,
+ country TEXT,
+ born_year INT CHECK (born_year > 1000)
 );
-
 CREATE TABLE books (
-    id SERIAL PRIMARY KEY,
-	author_id INT NOT NULL,
-	title VARCHAR(100) NOT NULL,
-	isbn VARCHAR(20) UNIQUE NOT NULL,
-	price NUMERIC(10,2) NOT NULL,
-	publication_date DATE NOT NULL,
-
-	CONSTRAINT fk_books_authors
-        FOREIGN KEY (author_id)
-        REFERENCES authors(id)
-
+ id BIGSERIAL PRIMARY KEY,
+ author_id BIGINT NOT NULL REFERENCES authors(id) ON DELETE
+RESTRICT,
+ title TEXT NOT NULL,
+ isbn CHAR(13) UNIQUE,
+ price NUMERIC(8,2) CHECK (price >= 0),
+ published_at DATE NOT NULL
 );
-CREATE TABLE clients (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(100) UNIQUE NOT NULL,
-	country VARCHAR(100) NOT NULL,
-	created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE customers (
+ id BIGSERIAL PRIMARY KEY,
+ email CITEXT UNIQUE NOT NULL,
+ country TEXT,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-
-CREATE TABLE orders
-(
-    id SERIAL PRIMARY KEY,
-    client_id INT NOT NULL,
-    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    order_status VARCHAR(20) NOT NULL
-        CHECK (order_status IN ('new', 'paid', 'shipped', 'cancelled')),
-    amount INT NOT NULL,
-    price NUMERIC(10,2) NOT NULL,
-
-    CONSTRAINT fk_orders_clients
-        FOREIGN KEY (client_id)
-        REFERENCES clients(id)
+CREATE TABLE orders (
+ id BIGSERIAL PRIMARY KEY,
+ customer_id BIGINT NOT NULL REFERENCES customers(id),
+ placed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+ status TEXT NOT NULL
 );
-
-CREATE TABLE clients_orders
-(
-    order_id INT NOT NULL,
-    client_id INT NOT NULL,
-    amount INT NOT NULL,
-	price NUMERIC(10,2) NOT NULL,
-
-	PRIMARY KEY (order_id, client_id),
-
-    CONSTRAINT fk_clients_orders_orders
-        FOREIGN KEY (order_id)
-        REFERENCES orders(id),
-
-    CONSTRAINT fk_clients_orders_clients
-        FOREIGN KEY (client_id)
-        REFERENCES clients(id)
+CREATE TABLE order_items (
+ order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE
+CASCADE,
+ book_id BIGINT NOT NULL REFERENCES books(id),
+ quantity INT NOT NULL CHECK (quantity > 0),
+ price_each NUMERIC(8,2) NOT NULL CHECK (price_each >= 0),
+ PRIMARY KEY (order_id, book_id)
 );
