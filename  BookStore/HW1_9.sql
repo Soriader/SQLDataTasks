@@ -141,3 +141,57 @@ LIMIT 100;
 --The plan changed from Seq Scan + Sort to Index Only Scan + Index Scan. Execution
 --time dropped from approximately 31.6 ms to approximately 0.172 ms.
 
+--Test query 3
+
+--first variant
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT
+    status,
+    DATE_TRUNC('month', placed_at) AS current_month,
+    COUNT(*) AS count_status
+FROM orders_index_test
+GROUP BY status, current_month
+ORDER BY status, current_month;
+
+--second variant
+EXPLAIN (ANALYZE, BUFFERS)
+With monthly_counts AS (
+SELECT
+    status,
+    DATE_TRUNC('month', placed_at) AS current_month,
+    COUNT(*) AS count_status
+FROM orders_index_test
+GROUP BY status, current_month
+)
+SELECT *
+FROM monthly_counts
+ORDER BY status, current_month;
+
+--third variant
+EXPLAIN (ANALYZE, BUFFERS)
+With monthly_counts AS MATERIALIZED (
+SELECT
+    status,
+    DATE_TRUNC('month', placed_at) AS current_month,
+    COUNT(*) AS count_status
+FROM orders_index_test
+GROUP BY status, current_month
+)
+SELECT *
+FROM monthly_counts
+ORDER BY status, current_month;
+
+--Top query 3:
+--Aggregating the number of orders by status and month.
+--Problem:
+--The original query performed a GroupAggregate followed by a 100,000-row sort.
+--The sort used an external merge and temporary files, significantly increasing execution time.
+--
+--Optimization:
+--The query was split into two stages: first, aggregation in the MATERIALIZED CTE,
+--and only then sorting the final result. Additionally, EXTRACT(MONTH) was replaced with DATE_TRUNC('month')
+--to avoid mixing the same months from different years.
+--
+--Result:
+--The plan changed to a HashAggregate + a small Sort after 65 rows.
+--The execution time dropped from approximately 172.7 ms to approximately 43.8 ms.
