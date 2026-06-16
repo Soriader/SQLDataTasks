@@ -224,3 +224,71 @@ CREATE TABLE gold.fact_order_line (
     CONSTRAINT chk_fact_order_line_price_each
         CHECK (price_each >= 0)
 );
+
+--insert transform data from bronze to silver
+
+INSERT INTO silver.customers (
+    customer_id,
+    full_name,
+    email,
+    country,
+    segment,
+    created_at
+)
+SELECT
+    source_customer_id,
+    TRIM(full_name),
+    LOWER(TRIM(email)),
+    TRIM(country),
+    TRIM(segment),
+    created_at::TIMESTAMPTZ
+FROM bronze.customers_raw
+WHERE source_customer_id IS NOT NULL;
+
+--TEST
+SELECT
+    customer_id,
+    full_name,
+    email,
+    country,
+    segment,
+    created_at,
+    loaded_at
+FROM silver.customers
+ORDER BY customer_id;
+
+--silver to gold
+
+INSERT INTO gold.dim_customer (
+    customer_id,
+    full_name,
+    email,
+    country,
+    segment,
+    valid_from,
+    valid_to,
+    is_current
+)
+SELECT
+    customer_id,
+    full_name,
+    email,
+    country,
+    segment,
+    CURRENT_TIMESTAMP,
+    NULL,
+    TRUE
+FROM silver.customers;
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM gold.dim_customer AS d
+    WHERE d.customer_id = s.customer_id
+      AND d.is_current = TRUE
+);
+
+--test
+
+SELECT *
+FROM gold.dim_customer
+
+--I do the same for all labels
