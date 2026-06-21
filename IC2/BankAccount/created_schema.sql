@@ -74,3 +74,28 @@ CREATE TABLE outbox_events (
     CONSTRAINT chk_outbox_status
         CHECK (status IN ('NEW', 'PUBLISHED', 'FAILED'))
 );
+
+
+--for IC2.6
+
+CREATE SCHEMA IF NOT EXISTS isolation_lab;
+
+DROP TABLE IF EXISTS isolation_lab.isolation_orders;
+
+CREATE TABLE isolation_lab.isolation_orders (
+    id BIGSERIAL PRIMARY KEY,
+    customer_name TEXT NOT NULL,
+    amount NUMERIC(10, 2) NOT NULL,
+    status TEXT NOT NULL
+);
+
+INSERT INTO isolation_lab.isolation_orders (
+    customer_name,
+    amount,
+    status
+)
+VALUES
+    ('Anna', 100.00, 'PAID'),
+    ('Jan', 200.00, 'PAID'),
+    ('Maria', 50.00, 'PENDING');
+

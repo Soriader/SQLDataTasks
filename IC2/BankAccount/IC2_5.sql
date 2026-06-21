@@ -347,3 +347,5 @@ SET
     status = 'PUBLISHED',
     published_at = CURRENT_TIMESTAMP
 WHERE status = 'NEW';
+
+
