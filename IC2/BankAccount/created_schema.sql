@@ -99,3 +99,35 @@ VALUES
     ('Jan', 200.00, 'PAID'),
     ('Maria', 50.00, 'PENDING');
 
+-- for IC2.8
+
+CREATE TABLE cdc_lab.customers_cdc_test (
+    id BIGSERIAL PRIMARY KEY,
+    customer_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE cdc_lab.customers_cdc_test
+REPLICA IDENTITY FULL;
+
+--for IC2.9
+
+CREATE SCHEMA IF NOT EXISTS cdc_lab;
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+DROP TABLE IF EXISTS cdc_lab.orders_source;
+
+CREATE TABLE cdc_lab.orders_source (
+    order_id BIGSERIAL PRIMARY KEY,
+    customer_id BIGINT NOT NULL,
+    order_status TEXT NOT NULL,
+    amount NUMERIC(12, 2) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE cdc_lab.orders_source
+REPLICA IDENTITY FULL;
