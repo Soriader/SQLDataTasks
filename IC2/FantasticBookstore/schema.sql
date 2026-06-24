@@ -633,3 +633,235 @@ CREATE INDEX idx_silver_order_items_is_deleted
 CREATE UNIQUE INDEX uq_silver_order_items_order_book_active
     ON silver.order_items(order_id, book_id)
     WHERE is_deleted = FALSE;
+
+
+--gold schema
+
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE SCHEMA IF NOT EXISTS gold;
+
+CREATE TABLE gold.dim_customer (
+    customer_key BIGSERIAL PRIMARY KEY,
+
+    customer_id BIGINT NOT NULL,
+    full_name TEXT NOT NULL,
+    email CITEXT NOT NULL,
+    country TEXT,
+
+    segment TEXT NOT NULL CHECK (
+        segment IN ('RETAIL', 'PREMIUM', 'BUSINESS')
+    ),
+
+    valid_from TIMESTAMPTZ NOT NULL,
+    valid_to TIMESTAMPTZ,
+    is_current BOOLEAN NOT NULL DEFAULT TRUE,
+
+    source_lsn TEXT,
+    loaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT chk_dim_customer_validity
+        CHECK (
+            (is_current = TRUE AND valid_to IS NULL)
+            OR
+            (is_current = FALSE AND valid_to IS NOT NULL)
+        ),
+
+    CONSTRAINT chk_dim_customer_valid_range
+        CHECK (
+            valid_to IS NULL
+            OR valid_to > valid_from
+        )
+);
+
+CREATE UNIQUE INDEX uq_gold_dim_customer_current
+    ON gold.dim_customer(customer_id)
+    WHERE is_current = TRUE;
+
+CREATE UNIQUE INDEX uq_gold_dim_customer_email_current
+    ON gold.dim_customer(email)
+    WHERE is_current = TRUE;
+
+CREATE INDEX idx_gold_dim_customer_customer_id
+    ON gold.dim_customer(customer_id);
+
+CREATE INDEX idx_gold_dim_customer_segment
+    ON gold.dim_customer(segment);
+
+CREATE INDEX idx_gold_dim_customer_is_current
+    ON gold.dim_customer(is_current);
+
+CREATE TABLE gold.dim_book (
+    book_key BIGSERIAL PRIMARY KEY,
+
+    book_id BIGINT NOT NULL,
+    author_id BIGINT NOT NULL,
+
+    title TEXT NOT NULL,
+    isbn TEXT NOT NULL CHECK (length(isbn) = 13),
+    genre TEXT NOT NULL,
+    publisher TEXT NOT NULL,
+
+    author_name TEXT NOT NULL,
+    author_country TEXT NOT NULL,
+
+    published_at DATE,
+    list_price NUMERIC(9, 2) CHECK (list_price IS NULL OR list_price > 0),
+
+    source_lsn TEXT,
+    loaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMPTZ,
+
+    CONSTRAINT chk_dim_book_deleted_at
+        CHECK (
+            (is_deleted = FALSE AND deleted_at IS NULL)
+            OR
+            (is_deleted = TRUE AND deleted_at IS NOT NULL)
+        )
+);
+
+CREATE UNIQUE INDEX uq_gold_dim_book_book_id_active
+    ON gold.dim_book(book_id)
+    WHERE is_deleted = FALSE;
+
+CREATE UNIQUE INDEX uq_gold_dim_book_isbn_active
+    ON gold.dim_book(isbn)
+    WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_gold_dim_book_book_id
+    ON gold.dim_book(book_id);
+
+CREATE INDEX idx_gold_dim_book_author_id
+    ON gold.dim_book(author_id);
+
+CREATE INDEX idx_gold_dim_book_genre
+    ON gold.dim_book(genre);
+
+CREATE INDEX idx_gold_dim_book_author_name
+    ON gold.dim_book(author_name);
+
+CREATE INDEX idx_gold_dim_book_is_deleted
+    ON gold.dim_book(is_deleted);
+
+
+CREATE TABLE gold.dim_date (
+    date_key INT PRIMARY KEY,
+
+    full_date DATE NOT NULL UNIQUE,
+
+    year INT NOT NULL,
+    quarter INT NOT NULL CHECK (quarter BETWEEN 1 AND 4),
+    month INT NOT NULL CHECK (month BETWEEN 1 AND 12),
+    month_name TEXT NOT NULL,
+
+    day INT NOT NULL CHECK (day BETWEEN 1 AND 31),
+    day_of_week INT NOT NULL CHECK (day_of_week BETWEEN 1 AND 7),
+    day_name TEXT NOT NULL,
+
+    week_of_year INT NOT NULL CHECK (week_of_year BETWEEN 1 AND 53),
+    is_weekend BOOLEAN NOT NULL
+);
+
+CREATE INDEX idx_gold_dim_date_full_date
+    ON gold.dim_date(full_date);
+
+CREATE INDEX idx_gold_dim_date_year_month
+    ON gold.dim_date(year, month);
+
+CREATE INDEX idx_gold_dim_date_year_quarter
+    ON gold.dim_date(year, quarter);
+
+
+INSERT INTO gold.dim_date (
+    date_key,
+    full_date,
+    year,
+    quarter,
+    month,
+    month_name,
+    day,
+    day_of_week,
+    day_name,
+    week_of_year,
+    is_weekend
+)
+SELECT
+    TO_CHAR(d::DATE, 'YYYYMMDD')::INT AS date_key,
+    d::DATE AS full_date,
+    EXTRACT(YEAR FROM d)::INT AS year,
+    EXTRACT(QUARTER FROM d)::INT AS quarter,
+    EXTRACT(MONTH FROM d)::INT AS month,
+    TRIM(TO_CHAR(d, 'Month')) AS month_name,
+    EXTRACT(DAY FROM d)::INT AS day,
+    EXTRACT(ISODOW FROM d)::INT AS day_of_week,
+    TRIM(TO_CHAR(d, 'Day')) AS day_name,
+    EXTRACT(WEEK FROM d)::INT AS week_of_year,
+    EXTRACT(ISODOW FROM d)::INT IN (6, 7) AS is_weekend
+FROM generate_series(
+    '2020-01-01'::DATE,
+    '2035-12-31'::DATE,
+    INTERVAL '1 day'
+) AS g(d)
+ON CONFLICT (date_key) DO NOTHING;
+
+CREATE TABLE gold.fact_order_line (
+    order_line_key BIGSERIAL PRIMARY KEY,
+
+    order_item_id BIGINT NOT NULL,
+    order_id BIGINT NOT NULL,
+
+    customer_key BIGINT NOT NULL,
+    book_key BIGINT NOT NULL,
+    date_key INT NOT NULL,
+
+    order_status TEXT NOT NULL CHECK (
+        order_status IN ('NEW', 'PAID', 'SHIPPED', 'CANCELLED', 'REFUNDED')
+    ),
+
+    quantity INT NOT NULL CHECK (quantity > 0),
+    price_each NUMERIC(9, 2) NOT NULL CHECK (price_each > 0),
+
+    line_total NUMERIC(12, 2)
+        GENERATED ALWAYS AS (quantity * price_each) STORED,
+
+    placed_at TIMESTAMPTZ NOT NULL,
+
+    source_order_lsn TEXT,
+    source_order_item_lsn TEXT,
+    loaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_fact_order_line_customer
+        FOREIGN KEY (customer_key)
+        REFERENCES gold.dim_customer(customer_key),
+
+    CONSTRAINT fk_fact_order_line_book
+        FOREIGN KEY (book_key)
+        REFERENCES gold.dim_book(book_key),
+
+    CONSTRAINT fk_fact_order_line_date
+        FOREIGN KEY (date_key)
+        REFERENCES gold.dim_date(date_key)
+);
+
+CREATE UNIQUE INDEX uq_gold_fact_order_line_order_item
+    ON gold.fact_order_line(order_item_id);
+
+CREATE INDEX idx_gold_fact_order_line_order_id
+    ON gold.fact_order_line(order_id);
+
+CREATE INDEX idx_gold_fact_order_line_customer_key
+    ON gold.fact_order_line(customer_key);
+
+CREATE INDEX idx_gold_fact_order_line_book_key
+    ON gold.fact_order_line(book_key);
+
+CREATE INDEX idx_gold_fact_order_line_date_key
+    ON gold.fact_order_line(date_key);
+
+CREATE INDEX idx_gold_fact_order_line_order_status
+    ON gold.fact_order_line(order_status);
+
+CREATE INDEX idx_gold_fact_order_line_loaded_at
+    ON gold.fact_order_line(loaded_at);
