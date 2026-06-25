@@ -896,3 +896,27 @@ ALTER TABLE gold.dim_customer
 ADD COLUMN current_segment TEXT,
 ADD COLUMN previous_segment TEXT;
 
+--HW2.9
+
+CREATE SCHEMA IF NOT EXISTS cdc_lab;
+
+CREATE TABLE cdc_lab.customers_cdc_test (
+    id BIGSERIAL PRIMARY KEY,
+    customer_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE cdc_lab.customers_cdc_test
+REPLICA IDENTITY FULL;
+
+INSERT INTO cdc_lab.customers_cdc_test (
+    customer_name,
+    email,
+    status
+)
+VALUES
+    ('Anna Nowak', 'anna@example.com', 'ACTIVE'),
+    ('Jan Kowalski', 'jan@example.com', 'ACTIVE');

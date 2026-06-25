@@ -1,0 +1,29 @@
+{
+  "name": "fantasticbookstore-postgres-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname": "fantasticbookstore",
+
+    "topic.prefix": "fb",
+    "schema.include.list": "cdc_lab",
+    "table.include.list": "cdc_lab.customers_cdc_test",
+
+    "plugin.name": "pgoutput",
+    "slot.name": "fb_slot",
+    "publication.name": "fb_publication",
+    "publication.autocreate.mode": "filtered",
+
+    "snapshot.mode": "initial",
+
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false"
+  }
+}
