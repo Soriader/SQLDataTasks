@@ -865,3 +865,34 @@ CREATE INDEX idx_gold_fact_order_line_order_status
 
 CREATE INDEX idx_gold_fact_order_line_loaded_at
     ON gold.fact_order_line(loaded_at);
+
+--HW2.3
+
+ALTER TABLE silver.customers
+ADD COLUMN city TEXT;
+
+UPDATE silver.customers
+SET city = CASE
+    WHEN customer_id = 1 THEN 'Zakopane'
+    WHEN customer_id = 2 THEN 'Chojnice'
+    WHEN customer_id = 3 THEN 'Berlin'
+    WHEN customer_id = 4 THEN 'Londyn'
+    WHEN customer_id = 5 THEN 'Marsylia'
+END
+WHERE customer_id IN (1, 2, 3, 4, 5);
+
+ALTER TABLE gold.dim_customer
+ADD COLUMN city TEXT;
+
+UPDATE gold.dim_customer AS g
+SET city = s.city
+FROM silver.customers AS s
+WHERE g.customer_id = s.customer_id
+  AND g.is_current = TRUE;
+
+--HW2.4
+
+ALTER TABLE gold.dim_customer
+ADD COLUMN current_segment TEXT,
+ADD COLUMN previous_segment TEXT;
+
