@@ -1,0 +1,9 @@
+order_id,customer_id,placed_at,status,quantity,price_each,country
+1,10,2025-01-12,paid,2,50.0,PL
+2,11,2025-03-03,paid,1,40.0,DE
+3,10,2025-03-10,paid,1,25.0,PL
+4,12,2025-06-20,paid,5,10.0,FR
+5,10,2025-07-01,pending,3,30.0,PL
+6,13,2025-07-04,paid,1,60.0,UK
+7,11,2025-07-08,cancelled,2,35.0,DE
+8,12,2025-07-15,refunded,1,80.0,FR
