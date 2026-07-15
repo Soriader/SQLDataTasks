@@ -110,10 +110,29 @@ orders_clean_df.printSchema()
 # COMMAND ----------
 
 # TODO: dodaj amount_band, is_paid i processed_at.
-orders_enriched_df = orders_clean_df
+orders_enriched_df = orders_clean_df.select(
+    F.col("order_id"),
+    F.col("customer_id"),
+    F.col("status"),
+    F.col("channel"),
+    F.col("order_date"),
+
+    "amount", F.when(
+        F.col("amount") >= 200,
+        F.lit("HIGH")
+    ).otherwise(
+        F.lit("STANDARD")
+    ).alias("amount_band"),
+
+    (F.col("status") == "PAID").alias("is_paid"),
+
+    F.current_timestamp().alias("processed_at")
+)
 
 # TODO: pozostaw tylko poprawne opłacone zamówienia.
-paid_orders_df = orders_enriched_df
+paid_orders_df = orders_enriched_df.filter(
+    F.col("amount").isNotNull() & F.col("is_paid")
+)
 
 display(paid_orders_df)
 
