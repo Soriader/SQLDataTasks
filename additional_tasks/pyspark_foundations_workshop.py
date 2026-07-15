@@ -9,7 +9,7 @@
 
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
-
+from pyspark.sql.types import DecimalType
 # COMMAND ----------
 
 order_schema = T.StructType(
@@ -74,11 +74,35 @@ display(orders_raw_df)
 # COMMAND ----------
 
 # TODO: uzupełnij transformations zgodnie z wymaganiami Task 2.
+# TODO: uzupełnij transformations zgodnie z wymaganiami Task 2.
 orders_clean_df = orders_raw_df
+
+
+orders_clean_df = orders_raw_df.select(
+    F.col("order_id"),
+    F.col("customer_id"),
+    F.upper(
+        F.trim(F.col("status"))
+    ).alias("status"),
+
+    F.coalesce(
+        F.lower(F.trim(F.col("channel"))),
+        F.lit("unknown")
+    ).alias("channel"),
+
+    F.to_date(
+        F.col("order_date"),
+        "yyyy-MM-dd"
+    ).alias("order_date"),
+
+    F.col("amount")
+     .cast(DecimalType(12, 2))
+     .alias("amount")
+)
+
 
 display(orders_clean_df)
 orders_clean_df.printSchema()
-
 # COMMAND ----------
 # MAGIC %md
 # MAGIC ## Task 3: Reguły Biznesowe
