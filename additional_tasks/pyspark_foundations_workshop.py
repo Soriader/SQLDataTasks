@@ -146,6 +146,9 @@ high_value_df = paid_orders_df.filter(F.col("amount") >= 200)
 
 # TODO: uruchom bezpieczną action i obejrzyj wynik.
 
+high_value_df.show()
+
+
 # COMMAND ----------
 
 high_value_df.explain(mode="formatted")
