@@ -160,9 +160,20 @@ high_value_df.explain(mode="formatted")
 # COMMAND ----------
 
 # TODO: wykonaj left join i dodaj customer_match_status.
-enriched_orders_df = paid_orders_df
+enriched_orders_df = paid_orders_df.join(customers_df, on="customer_id", how="left")
 
+enriched_orders_df = enriched_orders_df.withColumn(
+     "customer_match_status", F.when(
+    F.col("customer_name").isNull(),
+    F.lit("MISSING")
+    ).otherwise(
+        F.lit("MATCHED")
+    )
+)
+
+enriched_orders_df.count()
 display(enriched_orders_df)
+
 
 # COMMAND ----------
 # MAGIC %md
