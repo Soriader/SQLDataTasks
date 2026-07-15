@@ -74,3 +74,27 @@ Przy dużym DataFrame może to spowodować:
 ## 4. Co stałoby się z `O-103` po użyciu `inner join`?
 
 Po użyciu `inner join` rekord `O-103` zostałby całkowicie usunięty, ponieważ nie ma dopasowania po `customer_id`.
+
+
+## Pytania Na Koniec
+
+1. Która operacja zmieniła typ kolumny amount?
+`.cast(T.DecimalType(12, 2))` 
+
+2. Dlaczego po joinie sprawdziliśmy liczbę rekordów?
+Po joinie sprawdziliśmy liczbę rekordów, aby upewnić się, że left join nie usunął żadnego zamówienia oraz 
+nie powielił rekordów z powodu wielu dopasowań po customer_id.
+
+   
+3. Co oznacza jeden rekord agregatu?
+oznacza jedną unikalną kombinację: order_date + country czyli 
+
+Dla kraju PL w dniu 2026-07-01 wystąpiło jedno unikalne zamówienie, a łączny przychód wyniósł 120.50.
+
+4. Która linia po raz pierwszy wymusiła wykonanie planu?
+`display(orders_raw_df)` 
+
+5. Dlaczego nie używamy collect() do zwykłego podglądu dużych danych?
+
+collect() pobiera wszystkie rekordy z rozproszonych partycji do pamięci drivera lub klienta notebooka. Przy dużym DataFrame może to spowodować duży transfer sieciowy, przekroczenie pamięci, spowolnienie notebooka albo błąd OutOfMemory.
+
