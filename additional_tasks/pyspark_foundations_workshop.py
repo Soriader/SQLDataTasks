@@ -182,7 +182,19 @@ display(enriched_orders_df)
 # COMMAND ----------
 
 # TODO: przygotuj agregat o grain: jeden dzień i jeden kraj.
-daily_country_sales_df = enriched_orders_df
+daily_country_sales_df = (
+    enriched_orders_df
+    .filter(F.col("customer_match_status") == "MATCHED")
+    .groupBy(
+        "order_date",
+        "country"
+    )
+    .agg(
+        F.countDistinct("order_id").alias("orders_count"),
+        F.round(F.sum("amount"), 2).alias("revenue")
+    )
+    .sort("order_date", "country")
+)
 
 display(daily_country_sales_df)
 
