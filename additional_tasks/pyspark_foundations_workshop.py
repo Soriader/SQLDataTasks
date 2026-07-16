@@ -200,13 +200,39 @@ display(daily_country_sales_df)
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Task 7: Spark SQL - Opcjonalnie
+# MAGIC ## Task 7: Spark SQL
 
 # COMMAND ----------
 
 # TODO: zarejestruj temporary view.
 
+enriched_orders_df.createOrReplaceTempView("enriched_orders")
+
+result = spark.sql("""
+    SELECT
+        country,
+        COUNT(DISTINCT order_id) AS paid_orders_count
+    FROM enriched_orders
+    WHERE customer_match_status = 'MATCHED'
+    GROUP BY country
+    ORDER BY country
+""")
+
+result.show()
+
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- TODO: policz opłacone zamówienia per kraj.
+
+SELECT
+    country,
+    COUNT(DISTINCT order_id) AS paid_orders_count
+FROM enriched_orders
+WHERE customer_match_status = 'MATCHED'
+GROUP BY country
+ORDER BY country;
+
+
+result = enriched_orders_df.filter(F.col("customer_match_status") == "MATCHED").groupBy("country").agg(F.countDistinct("order_id").alias("paid_orders_count")).orderBy("country")
+result.show()
